@@ -1,13 +1,15 @@
+from ipaddress import ip_address
 import urllib.parse
 import requests
 import socket
 from bs4 import BeautifulSoup
 
 class CrawlInfo:
-    def __init__(self, ip_addresss, response_time, geolocation, html, url_list):
-        self.ip_address = ip_addresss
+    def __init__(self, ip_address, response_time, geolocation, html, url_list):
+        self.ip_address = ip_address
         self.response_time = response_time
-        self.geolocation = geolocation
+        self.country = geolocation["country"]
+        self.city = geolocation["city"]
         self.html = html
         self.url_list = url_list
         
@@ -15,7 +17,7 @@ class CrawlInfo:
         return str(self.url_list)
     
     def get_info(self):
-        return (self.ip_address, self.response_time, self.geolocation)
+        return (self.ip_address, self.response_time, self.country, self.city)
     
 class Crawler: # Takes in one URL and returns a list of URLs in that page
     def __init__(self, url):
@@ -45,14 +47,22 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         
         # TODO: NOT WORKING
         # Extract IP address, response time and geolocation
-        # socket = r.raw._connection.sock
-        # ip_address, port = socket.getpeername()
+        ip_address = Crawler.get_ip_address(url)
         response_time = r.elapsed.total_seconds()
-        geolocation = None
+        geolocation = Crawler.get_location(ip_address)
 
-        results = CrawlInfo(ip_addresss=None, response_time=response_time, geolocation=geolocation, html=html, url_list=url_list)
+        results = CrawlInfo(ip_address=ip_address, response_time=response_time, geolocation=geolocation, html=html, url_list=url_list)
         self.crawl_info = results
         return results
+    
+    def get_ip_address(url):
+        domain = url.split("://")[-1].split("/")[0]
+        return socket.gethostbyname(domain)
+    
+    def get_location(ip_address):
+        response = requests.get(f"https://ipinfo.io/{ip_address}/json")
+        data = response.json()
+        return data
     
     def get_url_list(self):
         return self.crawl_info.url_list
@@ -68,9 +78,13 @@ if __name__ == "__main__":
     test_crawler.start_crawling()
 
     results = test_crawler.crawl_info
-
-    print(f"IP Address: {str(results.ip_address)}")
-    print(f"Response Time: {str(results.response_time)}s")
-    print(f"Geolocation: {str(results.geolocation)}")
-    print(f"URLS: {str(results.url_list)}")
+    if (results is None):
+        print("URL invalid")
+    else:
+        print(f"IP Address: {str(results.ip_address)}")
+        print(f"Response Time: {str(results.response_time)}s")
+        print(f"Geolocation:")
+        print(f"\tCountry: {str(results.country)}")
+        print(f"\tCity: {str(results.city)}")
+        print(f"URLS: {str(results.url_list)}")
     
