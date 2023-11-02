@@ -69,9 +69,8 @@ if __name__ == "__main__":
     if starting_file.is_file():
         with starting_file.open() as f:
             urls = [line.strip() for line in f]
-            
+
         main(urls)
     else:
         print("Please provide a file of starting URLs or save it as starting_urls.txt")
         exit(1)
-    # main(url)  # TODO: Change this to read from a list of starting URLs
