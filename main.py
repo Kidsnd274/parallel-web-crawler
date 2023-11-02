@@ -11,6 +11,9 @@ class ParallelProcessManager():
         self.num_processes = num_processes
         self.url_queue = url_queue
         self.database = database
+        self.urls_crawled = 0
+        self.max_urls = 1000
+        self.lock = mp.Lock()
 
     def add_urls_to_queue(self, urls):
         for url in urls:
@@ -29,10 +32,14 @@ class ParallelProcessManager():
 
     def run_crawler_process(self):
         # each process creates an instance of the WebCrawler class and crawls urls from the url queue
-        web_crawler = Crawler(self.url_queue, self.database)
-        while self.url_queue:
+        while self.url_queue and self.urls_crawled < self.max_urls:
             url = self.url_queue.get()
-            web_crawler.crawl_url(url)
+            web_crawler = Crawler(url)
+            results = web_crawler.start_crawling()
+            self.lock.acquire()
+            self.urls_crawled += 1
+            self.lock.release()
+            self.add_urls_to_queue(results.url_list)
 
 
 def main():
