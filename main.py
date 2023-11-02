@@ -1,6 +1,6 @@
 import multiprocessing as mp
 import sys
-from dbinit import initialize_database
+# from dbinit import initialize_database
 from crawler import *
 
 
@@ -42,7 +42,7 @@ class ParallelProcessManager():
             self.add_urls_to_queue(results.url_list)
 
 
-def main():
+def main(urls):
     # example num_processes = 4
     # initialise database
     initialize_database()
@@ -57,8 +57,21 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        url = sys.argv[1]
-    except IndexError:
-        print("Please input an URL!")
-    main(url)  # TODO: Change this to read from a list of starting URLs
+    import pathlib
+    if len(sys.argv) > 1: # Check if an argument is supplied
+        try:
+            starting_file = pathlib.Path(sys.argv[1])
+        except IndexError:
+            print("Please input a file name")
+    else:
+        starting_file = pathlib.Path("starting_urls.txt")
+
+    if starting_file.is_file():
+        with starting_file.open() as f:
+            urls = [line.strip() for line in f]
+            
+        main(urls)
+    else:
+        print("Please provide a file of starting URLs or save it as starting_urls.txt")
+        exit(1)
+    # main(url)  # TODO: Change this to read from a list of starting URLs
