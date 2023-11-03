@@ -23,7 +23,7 @@ class ParallelProcessManager():
         # create processes to run in parallel
         processes = []
         for i in range(self.num_processes):
-            process = mp.Process(targer=self.run_crawler_process)
+            process = mp.Process(target=self.run_crawler_process)
             processes.append(process)
             process.start()
 

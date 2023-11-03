@@ -25,18 +25,20 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         self.crawl_info = None
     
     def start_crawling(self):
-        if self.crawl_info is not None:
-            raise Exception # This Crawler has already been ran
+        if self.crawl_info is not None: # Raise an exception if this URL has already been crawled
+            raise Exception
         
-        # Download html
+        # Check with db if this url has been crawled
+        
+        # Download HTML from URL
         r = requests.get(self.url)
         if r.status_code != 200:
-            return []
-            raise Exception # Raise exception that url failed to crawl
+            return None
+            raise Exception # Raise exception if website couldn't be accessed
         
         html = r.text
         
-        # Extract urls
+        # Extract URLs from HTML content
         url_list = []
         soup = BeautifulSoup(html, 'html.parser')
         for link in soup.find_all('a'):
@@ -52,6 +54,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
 
         results = CrawlInfo(ip_address=ip_address, response_time=response_time, geolocation=geolocation, html=html, url_list=url_list)
         self.crawl_info = results
+        # add to database
         return results
     
     def get_ip_address(url):
@@ -67,7 +70,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         return self.crawl_info.url_list
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # Test code to test the crawler for one URL
     try:
         import sys
         url = sys.argv[1]
