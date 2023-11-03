@@ -17,7 +17,7 @@ PAGE_DATA = [
 ]
 
 # Instantiate Database connection
-db = Database('crawler')
+db = Database('crawler.db')
 db.clear_all()
 
 # Insert server info

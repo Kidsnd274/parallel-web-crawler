@@ -20,13 +20,19 @@ class CrawlInfo:
         return (self.ip_address, self.response_time, self.country, self.city)
     
 class Crawler: # Takes in one URL and returns a list of URLs in that page
+    database_ref = None
+    
     def __init__(self, url):
         self.url = url
         self.crawl_info = None
+        
+    @staticmethod
+    def set_database(ref): # Call this during initialization
+        Crawler.database_ref = ref
     
     def start_crawling(self):
         if self.crawl_info is not None: # Raise an exception if this URL has already been crawled
-            raise Exception
+            raise Exception(f'URL {self.url} has already been crawled')
         
         # Check with db if this url has been crawled
         
@@ -34,7 +40,6 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         r = requests.get(self.url)
         if r.status_code != 200:
             return None
-            raise Exception # Raise exception if website couldn't be accessed
         
         html = r.text
         

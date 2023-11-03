@@ -1,8 +1,7 @@
 import multiprocessing as mp
 import sys
-# from dbinit import initialize_database
 from crawler import *
-
+from database import Database
 
 class ParallelProcessManager():
     def __init__(self, num_processes, url_queue, database):
@@ -11,7 +10,7 @@ class ParallelProcessManager():
         self.num_processes = num_processes
         self.url_queue = url_queue
         self.database = database
-        self.urls_crawled = 0
+        # self.urls_crawled = 0
         self.max_urls = 1000
         self.lock = mp.Lock()
 
@@ -43,17 +42,19 @@ class ParallelProcessManager():
 
 
 def main(urls):
-    # example num_processes = 4
-    # initialise database
-    initialize_database()
+    db = Database('crawler.db')
+    db.clear_all()
+    Crawler.set_database(db)
 
-    # get initial urls from database
-
-    # create multiprocessing queue to store urls
+    # Create multiprocessing manager to handle parallel processes
     with mp.Manager() as manager:
-        url_queue = manager.Queue()
+        url_queue = manager.Queue()  # Create multiprocessing queue to store urls
 
-        # for initial urls in url_queue, put into mp queue
+        # Instantiate the ParallelProcessManager
+        process_manager = ParallelProcessManager(num_processes=4, url_queue=url_queue, database=db)
+        
+        process_manager.add_urls_to_queue(urls)  # Add initial URLs to the queue
+        process_manager.start_crawler_process()
 
 
 if __name__ == "__main__":
