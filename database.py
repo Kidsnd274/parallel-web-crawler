@@ -1,5 +1,6 @@
 import sqlite3
 import threading
+import multiprocessing as mp
 
 
 # Example usage:
@@ -7,7 +8,8 @@ import threading
 class Database:
     def __init__(self, db_name):
         self.db_name = db_name
-        self.lock = threading.Lock()
+        # self.lock = threading.Lock()
+        self.lock = mp.Lock()
         self.conn = None
         self.connect()
         self.initialize_database()

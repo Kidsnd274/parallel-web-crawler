@@ -53,7 +53,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
             url_list.append(href_url)
         
         # Extract IP address, response time and geolocation
-        ip_address = Crawler.get_ip_address(url)
+        ip_address = Crawler.get_ip_address(self.url)
         response_time = r.elapsed.total_seconds()
         geolocation = Crawler.get_location(ip_address)
 
