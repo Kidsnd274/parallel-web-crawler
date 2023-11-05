@@ -54,6 +54,14 @@ class Database:
 
             self.conn.commit()
 
+    def check_url_visited(self, url):
+        with self.lock:
+            with self.conn:
+                cur = self.conn.cursor()
+                cur.execute("SELECT visited FROM pages WHERE url = ?;", (url,))
+                result = cur.fetchone()
+                return result[0] if result else None
+
     def get_or_insert_server_info(self, ip_address, geolocation):
         with self.lock:
             cursor = self.conn.cursor()
