@@ -1,5 +1,5 @@
 https://www.google.com
 https://store.steampowered.com
 https://www.amazon.com
-https://www.wikipedia.com
+https://en.wikipedia.org/wiki/Main_Page
 https://www.imdb.com

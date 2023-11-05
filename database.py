@@ -1,7 +1,5 @@
 import sqlite3
-import threading
 import multiprocessing as mp
-
 
 # Example usage:
 # db = Database("your_database_name.db")
@@ -10,6 +8,8 @@ class Database:
         self.db_name = db_name
         # self.lock = threading.Lock()
         self.lock = mp.Lock()
+        self.next_server_id = 0 # USE MP LOCK
+        self.id_lock = mp.Lock()
         self.conn = None
         self.connect()
         self.initialize_database()
@@ -79,6 +79,12 @@ class Database:
                            (url, response_time, server_id))
             self.conn.commit()
             return cursor.lastrowid
+
+    def insert_url_for_crawler(self, url, response_time): # TODO: THIS FUNCTION IS NOT DONE AND IS TO BE USED BY THE CRAWLER
+        with self.id_lock:
+            curr_url_id = self.next_server_id
+            self.next_server_id += 1
+        # Use other functions to add data to database
 
     def mark_page_as_visited(self, page_id):
         with self.lock:

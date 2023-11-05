@@ -1,5 +1,5 @@
 from ipaddress import ip_address
-import urllib.parse
+from urllib.parse import urljoin, urlparse
 import requests
 import socket
 from bs4 import BeautifulSoup
@@ -23,18 +23,46 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
     database_ref = None
     
     def __init__(self, url):
-        self.url = url
+        self.url = Crawler.ensure_schema_added(url)
         self.crawl_info = None
         
     @staticmethod
     def set_database(ref): # Call this during initialization
         Crawler.database_ref = ref
     
+    def is_valid_link(link):
+        parsed_href = urlparse(link)
+        
+        # Check if it's not a http or https link
+        if parsed_href.scheme in ['mailto', 'tel', 'javascript']:
+            return False
+        
+        # Check if it's an anchor link
+        if link.startswith('#'):
+            return False
+            
+        return True
+
+    def ensure_absolute_url(base_url, link): # Checks if it's a relative path and adds the base_url
+        if bool(urlparse(link).netloc):
+            return link
+        return urljoin(base_url, link)
+
+    def ensure_schema_added(link):
+        parsed_href = urlparse(link)
+        
+        if parsed_href.scheme == '': # Checks if link does not have a scheme and adds https by default
+            new_parsed_href = urlparse(f"https://{parsed_href.geturl()}")
+            return new_parsed_href.geturl()
+        return parsed_href.geturl()
+        
+    
     def start_crawling(self):
         if self.crawl_info is not None: # Raise an exception if this URL has already been crawled
             raise Exception(f'URL {self.url} has already been crawled')
         
         # Check with db if this url has been crawled
+        
         
         # Download HTML from URL
         r = requests.get(self.url)
@@ -48,18 +76,20 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         soup = BeautifulSoup(html, 'html.parser')
         for link in soup.find_all('a'):
             href_url = link.get('href')
-            if href_url and href_url.startswith('/'):
-                href_url = urllib.parse.urljoin(self.url, href_url)
-            url_list.append(href_url)
+            if Crawler.is_valid_link(href_url):
+                href_url = Crawler.ensure_absolute_url(self.url, href_url)
+                url_list.append(href_url)
         
         # Extract IP address, response time and geolocation
         ip_address = Crawler.get_ip_address(self.url)
         response_time = r.elapsed.total_seconds()
         geolocation = Crawler.get_location(ip_address)
-
+        
         results = CrawlInfo(ip_address=ip_address, response_time=response_time, geolocation=geolocation, html=html, url_list=url_list)
         self.crawl_info = results
-        # add to database
+        
+        # Add to database
+        
         return results
     
     def get_ip_address(url):

@@ -3,6 +3,9 @@ import sys
 from crawler import *
 from database import Database
 
+NUM_PROCESS = 4
+CRAWL_COOL_DOWN = 3
+
 class ParallelProcessManager():
     def __init__(self, num_processes, url_queue):
         # parallel process manager initialisation, url queue is probably a multiprocessing queue initialised in the main function
@@ -38,6 +41,8 @@ class ParallelProcessManager():
             self.lock.acquire()
             self.urls_crawled += 1
             self.lock.release()
+            if results is None:
+                continue
             print(self.urls_crawled)
             self.add_urls_to_queue(results.url_list)
 
@@ -52,7 +57,7 @@ def main(urls):
         url_queue = manager.Queue()  # Create multiprocessing queue to store urls
 
         # Instantiate the ParallelProcessManager
-        process_manager = ParallelProcessManager(num_processes=4, url_queue=url_queue)
+        process_manager = ParallelProcessManager(num_processes=NUM_PROCESS, url_queue=url_queue)
         
         process_manager.add_urls_to_queue(urls)  # Add initial URLs to the queue
         process_manager.start_crawler_process()
