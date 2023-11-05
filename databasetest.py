@@ -38,6 +38,10 @@ for url, content in PAGE_DATA:
     db.insert_data(page_id, content)
     page_id += 1
 
+# check if url visited
+print("check url visited")
+print(db.check_url_visited("http://example2.com"))
+
 # Fetch and print data
 print("\nAll URLs:")
 print(db.fetch_all_urls())
