@@ -1,10 +1,11 @@
+import database
 import multiprocessing as mp
 import sys
 from crawler import *
-from database import Database
 
 NUM_PROCESS = 4
 CRAWL_COOL_DOWN = 3
+DATABASE_NAME = "crawler.db"
 
 class ParallelProcessManager():
     def __init__(self, num_processes, url_queue):
@@ -37,6 +38,7 @@ class ParallelProcessManager():
             url = self.url_queue.get()
             print(f"Process {mp.current_process().pid} is crawling {url}")
             web_crawler = Crawler(url)
+            web_crawler.set_database_name(DATABASE_NAME)
             results = web_crawler.start_crawling()
             self.lock.acquire()
             self.urls_crawled += 1
@@ -48,10 +50,8 @@ class ParallelProcessManager():
 
 
 def main(urls):
-    db = Database('crawler.db')
-    db.clear_all()
-    Crawler.set_database(db)
-
+    database.Database(DATABASE_NAME)
+    
     # Create multiprocessing manager to handle parallel processes
     with mp.Manager() as manager:
         url_queue = manager.Queue()  # Create multiprocessing queue to store urls

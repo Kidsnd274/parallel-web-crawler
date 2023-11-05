@@ -1,15 +1,15 @@
 import sqlite3
 import multiprocessing as mp
+import random
 
 # Example usage:
 # db = Database("your_database_name.db")
-class Database:
+
+class Database():
     def __init__(self, db_name):
         self.db_name = db_name
         # self.lock = threading.Lock()
         self.lock = mp.Lock()
-        self.next_server_id = 0 # USE MP LOCK
-        self.id_lock = mp.Lock()
         self.conn = None
         self.connect()
         self.initialize_database()
@@ -20,6 +20,7 @@ class Database:
     def close(self):
         if self.conn:
             self.conn.close()
+            self.conn = None
 
     def initialize_database(self):
         with self.lock:
@@ -56,11 +57,13 @@ class Database:
 
     def check_url_visited(self, url):
         with self.lock:
+            self.connect()
             with self.conn:
                 cur = self.conn.cursor()
                 cur.execute("SELECT visited FROM pages WHERE url = ?;", (url,))
                 result = cur.fetchone()
-                return result[0] if result else None
+            self.close()
+            return result[0] if result else None
 
     def get_or_insert_server_info(self, ip_address, geolocation):
         with self.lock:
@@ -87,12 +90,20 @@ class Database:
                            (url, response_time, server_id))
             self.conn.commit()
             return cursor.lastrowid
-
-    def insert_url_for_crawler(self, url, response_time): # TODO: THIS FUNCTION IS NOT DONE AND IS TO BE USED BY THE CRAWLER
-        with self.id_lock:
-            curr_url_id = self.next_server_id
-            self.next_server_id += 1
-        # Use other functions to add data to database
+        
+    def add_server_info_and_url(self, crawl_info): # For Crawler's use
+        url_crawled = crawl_info.url_crawled
+        ip_address = crawl_info.ip_address
+        response_time = crawl_info.response_time
+        geolocation = crawl_info.geolocation
+        html_data = crawl_info.html
+        
+        self.connect()
+        db_server_id = self.get_or_insert_server_info(ip_address, "test") # Add server info
+        db_page_id = self.insert_url(url_crawled, response_time, db_server_id)
+        # self.insert_data(db_page_id, html_data)
+        self.close()
+        
 
     def mark_page_as_visited(self, page_id):
         with self.lock:
