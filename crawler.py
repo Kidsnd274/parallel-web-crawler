@@ -1,3 +1,4 @@
+import database
 from ipaddress import ip_address
 from urllib.parse import urljoin, urlparse
 import requests
@@ -5,11 +6,13 @@ import socket
 from bs4 import BeautifulSoup
 
 class CrawlInfo:
-    def __init__(self, ip_address, response_time, geolocation, html, url_list):
+    def __init__(self, url_crawled, ip_address, response_time, geolocation, html, url_list):
+        self.url_crawled = url_crawled
         self.ip_address = ip_address
         self.response_time = response_time
         self.country = geolocation["country"]
         self.city = geolocation["city"]
+        self.geolocation = geolocation
         self.html = html
         self.url_list = url_list
         
@@ -20,17 +23,18 @@ class CrawlInfo:
         return (self.ip_address, self.response_time, self.country, self.city)
     
 class Crawler: # Takes in one URL and returns a list of URLs in that page
-    database_ref = None
-    
     def __init__(self, url):
         self.url = Crawler.ensure_schema_added(url)
         self.crawl_info = None
+        self.db_name = None
         
-    @staticmethod
-    def set_database(ref): # Call this during initialization
-        Crawler.database_ref = ref
+    def set_database_name(self, name): # Sets the shared database's name
+        self.db_name = name
     
     def is_valid_link(link):
+        if link is None:
+            return False
+        
         parsed_href = urlparse(link)
         
         # Check if it's not a http or https link
@@ -58,11 +62,14 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         
     
     def start_crawling(self):
+        db = database.Database(self.db_name)
+        
         if self.crawl_info is not None: # Raise an exception if this URL has already been crawled
             raise Exception(f'URL {self.url} has already been crawled')
         
         # Check with db if this url has been crawled
-        
+        if db.check_url_visited(self.url):
+            return None
         
         # Download HTML from URL
         r = requests.get(self.url)
@@ -76,6 +83,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         soup = BeautifulSoup(html, 'html.parser')
         for link in soup.find_all('a'):
             href_url = link.get('href')
+            print(href_url)
             if Crawler.is_valid_link(href_url):
                 href_url = Crawler.ensure_absolute_url(self.url, href_url)
                 url_list.append(href_url)
@@ -85,10 +93,16 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         response_time = r.elapsed.total_seconds()
         geolocation = Crawler.get_location(ip_address)
         
-        results = CrawlInfo(ip_address=ip_address, response_time=response_time, geolocation=geolocation, html=html, url_list=url_list)
+        results = CrawlInfo(url_crawled=self.url, ip_address=ip_address, 
+                            response_time=response_time, geolocation=geolocation, 
+                            html=html, url_list=url_list)
         self.crawl_info = results
         
         # Add to database
+        if results == None:
+            return results
+        
+        db.add_server_info_and_url(results)
         
         return results
     
