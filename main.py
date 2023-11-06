@@ -16,6 +16,7 @@ class ParallelProcessManager():
         self.urls_crawled = 0
         self.max_urls = 1000
         self.lock = mp.Lock()
+        self.db_lock = mp.Lock()
 
     def add_urls_to_queue(self, urls):
         for url in urls:
@@ -25,33 +26,35 @@ class ParallelProcessManager():
         # create processes to run in parallel
         processes = []
         for i in range(self.num_processes):
-            process = mp.Process(target=self.run_crawler_process)
+            process = mp.Process(target=self.run_crawler_process, args=(DATABASE_NAME, self.db_lock))
             processes.append(process)
             process.start()
 
         for process in processes:
             process.join()
 
-    def run_crawler_process(self):
+    def run_crawler_process(self, db_name, db_lock):
         # each process creates an instance of the WebCrawler class and crawls urls from the url queue
         while self.url_queue and self.urls_crawled < self.max_urls:
             url = self.url_queue.get()
             print(f"Process {mp.current_process().pid} is crawling {url}")
+            db = database.Database(db_name, db_lock) # Instantiate the db with the lock
+            
             web_crawler = Crawler(url)
-            web_crawler.set_database_name(DATABASE_NAME)
+            web_crawler.set_database(db)
             results = web_crawler.start_crawling()
+            
             self.lock.acquire()
             self.urls_crawled += 1
             self.lock.release()
+            
             if results is None:
                 continue
-            print(self.urls_crawled)
+            # print(self.urls_crawled)
             self.add_urls_to_queue(results.url_list)
 
 
 def main(urls):
-    database.Database(DATABASE_NAME)
-    
     # Create multiprocessing manager to handle parallel processes
     with mp.Manager() as manager:
         url_queue = manager.Queue()  # Create multiprocessing queue to store urls
@@ -61,8 +64,6 @@ def main(urls):
         
         process_manager.add_urls_to_queue(urls)  # Add initial URLs to the queue
         process_manager.start_crawler_process()
-
-
 
 
 if __name__ == "__main__":

@@ -6,10 +6,10 @@ import random
 # db = Database("your_database_name.db")
 
 class Database():
-    def __init__(self, db_name):
+    def __init__(self, db_name, db_lock):
         self.db_name = db_name
         # self.lock = threading.Lock()
-        self.lock = mp.Lock()
+        self.lock = db_lock
         self.conn = None
         self.connect()
         self.initialize_database()
@@ -79,7 +79,6 @@ class Database():
                 server_id = cursor.lastrowid
             else:
                 server_id = server_id[0]
-
             return server_id
 
     def insert_url(self, url, response_time, server_id):
@@ -99,9 +98,9 @@ class Database():
         html_data = crawl_info.html
         
         self.connect()
-        db_server_id = self.get_or_insert_server_info(ip_address, "test") # Add server info
+        db_server_id = self.get_or_insert_server_info(ip_address, geolocation) # Add server info
         db_page_id = self.insert_url(url_crawled, response_time, db_server_id)
-        # self.insert_data(db_page_id, html_data)
+        self.insert_data(db_page_id, html_data)
         self.close()
         
 

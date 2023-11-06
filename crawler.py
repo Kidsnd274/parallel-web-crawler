@@ -26,14 +26,16 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
     def __init__(self, url):
         self.url = Crawler.ensure_schema_added(url)
         self.crawl_info = None
-        self.db_name = None
+        self.db_ref = None
         
-    def set_database_name(self, name): # Sets the shared database's name
-        self.db_name = name
+    def set_database(self, ref): # Sets the shared database's name
+        self.db_ref = ref
     
     def is_valid_link(link):
         if link is None:
             return False
+        
+        # if link.startswith("?l=") # TODO: Ignore language links
         
         parsed_href = urlparse(link)
         
@@ -62,7 +64,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         
     
     def start_crawling(self):
-        db = database.Database(self.db_name)
+        db = self.db_ref
         
         if self.crawl_info is not None: # Raise an exception if this URL has already been crawled
             raise Exception(f'URL {self.url} has already been crawled')
@@ -83,7 +85,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         soup = BeautifulSoup(html, 'html.parser')
         for link in soup.find_all('a'):
             href_url = link.get('href')
-            print(href_url)
+            
             if Crawler.is_valid_link(href_url):
                 href_url = Crawler.ensure_absolute_url(self.url, href_url)
                 url_list.append(href_url)
