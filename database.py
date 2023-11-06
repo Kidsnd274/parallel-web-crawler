@@ -1,18 +1,17 @@
 import sqlite3
-import threading
 import multiprocessing as mp
-
 
 # Example usage:
 # db = Database("your_database_name.db")
-class Database:
-    def __init__(self, db_name):
+# db.initialize()
+
+class Database():
+    def __init__(self, db_name, db_lock):
         self.db_name = db_name
         # self.lock = threading.Lock()
-        self.lock = mp.Lock()
+        self.lock = db_lock
         self.conn = None
         self.connect()
-        self.initialize_database()
 
     def connect(self):
         self.conn = sqlite3.connect(self.db_name, check_same_thread=False)
@@ -20,73 +19,92 @@ class Database:
     def close(self):
         if self.conn:
             self.conn.close()
+            self.conn = None
 
-    def initialize_database(self):
-        with self.lock:
-            cursor = self.conn.cursor()
+    def initialize_database(self):   
+        cursor = self.conn.cursor()
 
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS serverinfo (
-                    server_id INTEGER PRIMARY KEY,
-                    ip_address TEXT UNIQUE NOT NULL,
-                    geolocation TEXT NOT NULL
-                );
-            """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS serverinfo (
+                server_id INTEGER PRIMARY KEY,
+                ip_address TEXT UNIQUE NOT NULL,
+                country TEXT NOT NULL,
+                city TEXT NOT NULL
+            );
+        """)
 
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS pages (
-                    page_id INTEGER PRIMARY KEY,
-                    url TEXT UNIQUE NOT NULL,
-                    response_time REAL,
-                    server_id INTEGER,
-                    visited BOOLEAN DEFAULT FALSE,
-                    FOREIGN KEY (server_id) REFERENCES serverinfo(server_id)
-                );
-            """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pages (
+                page_id INTEGER PRIMARY KEY,
+                url TEXT UNIQUE NOT NULL,
+                response_time REAL,
+                server_id INTEGER,
+                visited BOOLEAN DEFAULT FALSE,
+                FOREIGN KEY (server_id) REFERENCES serverinfo(server_id)
+            );
+        """)
 
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS data (
-                    page_id INTEGER PRIMARY KEY,
-                    content TEXT,
-                    FOREIGN KEY (page_id) REFERENCES pages(page_id)
-                );
-            """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS data (
+                page_id INTEGER PRIMARY KEY,
+                content TEXT,
+                FOREIGN KEY (page_id) REFERENCES pages(page_id)
+            );
+        """)
 
-            self.conn.commit()
+        self.conn.commit()
 
     def check_url_visited(self, url):
         with self.lock:
+            self.connect()
             with self.conn:
                 cur = self.conn.cursor()
                 cur.execute("SELECT visited FROM pages WHERE url = ?;", (url,))
                 result = cur.fetchone()
-                return result[0] if result else None
+            self.close()
+        return result[0] if result else None
 
-    def get_or_insert_server_info(self, ip_address, geolocation):
-        with self.lock:
-            cursor = self.conn.cursor()
+    def get_or_insert_server_info(self, ip_address, country, city):
+        cursor = self.conn.cursor()
 
-            cursor.execute("SELECT server_id FROM serverinfo WHERE ip_address = ?", (ip_address,))
-            server_id = cursor.fetchone()
+        cursor.execute("SELECT server_id FROM serverinfo WHERE ip_address = ?", (ip_address,))
+        server_id = cursor.fetchone()
 
-            if server_id is None:
-                cursor.execute("INSERT INTO serverinfo (ip_address, geolocation) VALUES (?, ?)",
-                               (ip_address, geolocation))
-                self.conn.commit()
-                server_id = cursor.lastrowid
-            else:
-                server_id = server_id[0]
-
-            return server_id
+        if server_id is None:
+            cursor.execute("INSERT INTO serverinfo (ip_address, country, city) VALUES (?, ?, ?)",
+                            (ip_address, country, city))
+            self.conn.commit()
+            server_id = cursor.lastrowid
+        else:
+            server_id = server_id[0]
+        return server_id
 
     def insert_url(self, url, response_time, server_id):
-        with self.lock:
-            cursor = self.conn.cursor()
+        cursor = self.conn.cursor()
 
-            cursor.execute("INSERT INTO pages (url, response_time, server_id) VALUES (?, ?, ?)",
-                           (url, response_time, server_id))
-            self.conn.commit()
-            return cursor.lastrowid
+        cursor.execute("INSERT INTO pages (url, response_time, server_id) VALUES (?, ?, ?)",
+                        (url, response_time, server_id))
+        self.conn.commit()
+        return cursor.lastrowid
+        
+    def add_server_info_and_url(self, crawl_info): # For Crawler's use
+        url_crawled = crawl_info.url_crawled
+        ip_address = crawl_info.ip_address
+        response_time = crawl_info.response_time
+        country = crawl_info.country
+        city = crawl_info.city
+        html_data = crawl_info.html
+        
+        # try: # Add logging
+        # print(f"Attempting to get lock... {url_crawled}")
+        with self.lock:
+            # print(f"Got Lock {url_crawled}")
+            self.connect()
+            db_server_id = self.get_or_insert_server_info(ip_address, country, city) # Add server info
+            db_page_id = self.insert_url(url_crawled, response_time, db_server_id)
+            # self.insert_data(db_page_id, html_data) # causes program to hang
+            self.close()
+        
 
     def mark_page_as_visited(self, page_id):
         with self.lock:
