@@ -30,7 +30,8 @@ class Database():
                 CREATE TABLE IF NOT EXISTS serverinfo (
                     server_id INTEGER PRIMARY KEY,
                     ip_address TEXT UNIQUE NOT NULL,
-                    geolocation TEXT NOT NULL
+                    country TEXT NOT NULL,
+                    city TEXT NOT NULL
                 );
             """)
 
@@ -65,7 +66,7 @@ class Database():
             self.close()
             return result[0] if result else None
 
-    def get_or_insert_server_info(self, ip_address, geolocation):
+    def get_or_insert_server_info(self, ip_address, country, city):
         with self.lock:
             cursor = self.conn.cursor()
 
@@ -73,8 +74,8 @@ class Database():
             server_id = cursor.fetchone()
 
             if server_id is None:
-                cursor.execute("INSERT INTO serverinfo (ip_address, geolocation) VALUES (?, ?)",
-                               (ip_address, geolocation))
+                cursor.execute("INSERT INTO serverinfo (ip_address, country, city) VALUES (?, ?, ?)",
+                               (ip_address, country, city))
                 self.conn.commit()
                 server_id = cursor.lastrowid
             else:
@@ -94,11 +95,12 @@ class Database():
         url_crawled = crawl_info.url_crawled
         ip_address = crawl_info.ip_address
         response_time = crawl_info.response_time
-        geolocation = crawl_info.geolocation
+        country = crawl_info.country
+        city = crawl_info.city
         html_data = crawl_info.html
         
         self.connect()
-        db_server_id = self.get_or_insert_server_info(ip_address, geolocation) # Add server info
+        db_server_id = self.get_or_insert_server_info(ip_address, country, city) # Add server info
         db_page_id = self.insert_url(url_crawled, response_time, db_server_id)
         self.insert_data(db_page_id, html_data)
         self.close()
