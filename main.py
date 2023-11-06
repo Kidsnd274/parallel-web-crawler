@@ -55,6 +55,11 @@ class ParallelProcessManager():
 
 
 def main(urls):
+    # Initialize database
+    db = database.Database(DATABASE_NAME, None)
+    db.initialize_database()
+    db = None
+    
     # Create multiprocessing manager to handle parallel processes
     with mp.Manager() as manager:
         url_queue = manager.Queue()  # Create multiprocessing queue to store urls
