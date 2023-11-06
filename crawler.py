@@ -54,6 +54,9 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
             return link
         return urljoin(base_url, link)
 
+    # def canonicalize_url(url):
+        
+
     def ensure_schema_added(link):
         parsed_href = urlparse(link)
         
@@ -107,6 +110,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         db.add_server_info_and_url(results)
         
         return results
+    
     
     def get_ip_address(url):
         domain = url.split("://")[-1].split("/")[0]
