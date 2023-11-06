@@ -1,6 +1,6 @@
 import database
 from ipaddress import ip_address
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlencode, urljoin, urlparse, parse_qs, parse_qsl, urlunparse 
 import requests
 import socket
 from bs4 import BeautifulSoup
@@ -35,12 +35,28 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         if link is None:
             return False
         
-        # if link.startswith("?l=") # TODO: Ignore language links
-        
-        parsed_href = urlparse(link)
+        parsed_url = urlparse(link)
         
         # Check if it's not a http or https link
-        if parsed_href.scheme in ['mailto', 'tel', 'javascript']:
+        if parsed_url.scheme in ['mailto', 'tel', 'javascript']: # TODO: Might change this to check for http or https
+            return False
+        
+        # Extract relevant details
+        if not parsed_url.hostname:
+            domain = ''
+        else:
+            hostname_split = parsed_url.hostname.split('.')
+            domain = '.'.join(hostname_split[-2:])
+        subdomain = parsed_url.netloc.split('.')[0]
+        query_params = parse_qs(parsed_url.query)
+        
+        # Ignore steampowered language links
+        if domain == 'steampowered.com' and 'l' in query_params:
+            return False
+        
+        # Ignore Wikipedia Other Languages
+        wikipedia_lang_set = {'ar', 'bh', 'uk', 'hy', 'tl', 'fr', 'cv', 'inh', 'hr', 'sr', 'de', 'sl', 'pl', 'shn', 'no', 'ml', 'ru', 'pt', 'bn', 'fa', 'te', 'su', 'sq', 'ro', 'sv', 'ceb', 'ps', 'ku', 'nn', 'ne', 'ts', 'lv', 'tr', 'hi', 'sk', 'bg', 'as', 'km', 'mk', 'fy', 'fi', 'ckb', 'zh', 'el', 'et', 'ta', 'it', 'sd', 'sat', 'uz', 'bs', 'yi', 'vi', 'simple', 'azb', 'da', 'ja', 'my', 'hu', 'zh-min-nan', 'kk', 'ka', 'ga', 'si', 'eu', 'ca', 'tt', 'sh', 'ms', 'lt', 'zh-yue', 'cs', 'eo', 'gl', 'th', 'es', 'ast', 'pa', 'nl', 'he', 'ko', 'id'}
+        if domain == 'wikipedia.org' and subdomain in wikipedia_lang_set:
             return False
         
         # Check if it's an anchor link
@@ -54,8 +70,29 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
             return link
         return urljoin(base_url, link)
 
-    # def canonicalize_url(url):
+    def canonicalize_url(url):        
+        # Parse the URL into components
+        parsed_url = urlparse(url)
         
+        # Convert scheme and netloc to lowercase
+        scheme = parsed_url.scheme.lower()
+        netloc = parsed_url.netloc.lower()
+        
+        # Remove default port numbers (80 for http and 443 for https)
+        if (scheme == "http" and netloc.endswith(':80')) or (scheme == "https" and netloc.endswith(':443')):
+            netloc = netloc.rsplit(':', 1)[0]
+        
+        # Remove duplicate slashes
+        path = parsed_url.path.replace('//', '/')
+        
+        # Sort query parameters
+        query = urlencode(sorted(parse_qsl(parsed_url.query)))
+        
+        # Reconstruct the URL from components
+        canonicalized_url = urlunparse((scheme, netloc, path, parsed_url.params, query, ''))
+        
+        return canonicalized_url
+
 
     def ensure_schema_added(link):
         parsed_href = urlparse(link)
@@ -88,9 +125,11 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         soup = BeautifulSoup(html, 'html.parser')
         for link in soup.find_all('a'):
             href_url = link.get('href')
+            href_url = Crawler.ensure_absolute_url(self.url, href_url)
             
             if Crawler.is_valid_link(href_url):
-                href_url = Crawler.ensure_absolute_url(self.url, href_url)
+                href_url = Crawler.canonicalize_url(href_url)
+                # print(href_url) # TODO: Remove this print!
                 url_list.append(href_url)
         
         # Extract IP address, response time and geolocation
