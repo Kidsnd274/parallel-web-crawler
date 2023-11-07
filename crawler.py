@@ -116,6 +116,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         # Download HTML from URL
         r = requests.get(self.url)
         if r.status_code != 200:
+            print(f"ERROR: Received HTTP Code {r.status_code} from {self.url}")
             return None
         
         html = r.text

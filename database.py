@@ -65,6 +65,16 @@ class Database():
             return False
         else:
             return True
+        
+    def check_url_visited_without_lock(self, url):
+        with self.conn:
+            cur = self.conn.cursor()
+            cur.execute("SELECT visited FROM pages WHERE url = ?;", (url,))
+            result = cur.fetchone()
+        if result is None:
+            return False
+        else:
+            return True
 
     def get_or_insert_server_info(self, ip_address, country, city):
         cursor = self.conn.cursor()
@@ -102,9 +112,10 @@ class Database():
         with self.lock:
             # print(f"Got Lock {url_crawled}")
             self.connect()
-            db_server_id = self.get_or_insert_server_info(ip_address, country, city) # Add server info
-            db_page_id = self.insert_url(url_crawled, response_time, db_server_id)
-            # self.insert_data(db_page_id, html_data) # causes program to hang
+            if not self.check_url_visited_without_lock(url_crawled):
+                db_server_id = self.get_or_insert_server_info(ip_address, country, city) # Add server info
+                db_page_id = self.insert_url(url_crawled, response_time, db_server_id)
+                # self.insert_data(db_page_id, html_data) # causes program to hang
             self.close()
         
 
@@ -175,8 +186,3 @@ class Database():
                 self.conn.commit()
             finally:
                 cursor.close()
-
-
-
-
-
