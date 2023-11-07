@@ -3,7 +3,7 @@ import sqlite3
 class Database():
     def __init__(self, db_name, db_lock):
         self.db_name = db_name
-        self.lock = db_lock
+        self.lock = db_lock # Database lock shared with other processes
         self.conn = None
         self.connect()
 
@@ -15,7 +15,7 @@ class Database():
             self.conn.close()
             self.conn = None
 
-    def initialize_database(self):   
+    def initialize_database(self): # Initialize and create new database with specified tables
         cursor = self.conn.cursor()
 
         cursor.execute("""
@@ -47,6 +47,27 @@ class Database():
         """)
 
         self.conn.commit()
+
+    # Function to add crawl results from a CrawlInfo object into the database
+    def add_server_info_and_url(self, crawl_info): # Only use this function for the Crawler class
+        url_crawled = crawl_info.url_crawled
+        ip_address = crawl_info.ip_address
+        response_time = crawl_info.response_time
+        country = crawl_info.country
+        city = crawl_info.city
+        html_data = crawl_info.html
+        
+        with self.lock:
+            self.connect()
+
+            if not self.check_url_visited_without_lock(url_crawled): # Check if URL is in database
+                db_server_id = self.get_or_insert_server_info(ip_address, country, city) # Add server info
+                db_page_id = self.insert_url(url_crawled, response_time, db_server_id) # Add page info
+                self.insert_data(db_page_id, html_data) # Add HTML data from the page
+            else:
+                print(f"[WARNING] Database encountered duplicate URL {url_crawled}")
+
+            self.close()
 
     def check_url_visited(self, url): # Only use this function for the Crawler class
         with self.lock:
@@ -92,29 +113,7 @@ class Database():
         cursor.execute("INSERT INTO pages (url, response_time, server_id) VALUES (?, ?, ?)",
                         (url, response_time, server_id))
         self.conn.commit()
-        return cursor.lastrowid
-        
-    def add_server_info_and_url(self, crawl_info): # Only use this function for the Crawler class
-        url_crawled = crawl_info.url_crawled
-        ip_address = crawl_info.ip_address
-        response_time = crawl_info.response_time
-        country = crawl_info.country
-        city = crawl_info.city
-        html_data = crawl_info.html
-        
-        # try: # Add logging
-        # print(f"Attempting to get lock... {url_crawled}")
-        with self.lock:
-            # print(f"Got Lock {url_crawled}")
-            self.connect()
-            if not self.check_url_visited_without_lock(url_crawled):
-                db_server_id = self.get_or_insert_server_info(ip_address, country, city) # Add server info
-                db_page_id = self.insert_url(url_crawled, response_time, db_server_id)
-                self.insert_data(db_page_id, html_data)
-            else:
-                print(f"[WARNING] Database encountered duplicate URL {url_crawled}")
-            self.close()
-        
+        return cursor.lastrowid        
 
     def mark_page_as_visited(self, page_id):
         cursor = self.conn.cursor()
