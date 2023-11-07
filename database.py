@@ -1,5 +1,4 @@
 import sqlite3
-import multiprocessing as mp
 
 # Example usage:
 # db = Database("your_database_name.db")
@@ -62,7 +61,10 @@ class Database():
                 cur.execute("SELECT visited FROM pages WHERE url = ?;", (url,))
                 result = cur.fetchone()
             self.close()
-        return result[0] if result else None
+        if result is None:
+            return False
+        else:
+            return True
 
     def get_or_insert_server_info(self, ip_address, country, city):
         cursor = self.conn.cursor()

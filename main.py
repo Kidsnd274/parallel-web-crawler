@@ -5,6 +5,7 @@ from crawler import *
 
 NUM_PROCESS = 4
 CRAWL_COOL_DOWN = 3
+MAX_URLS = 10
 DATABASE_NAME = "crawler.db"
 
 class ParallelProcessManager():
@@ -13,8 +14,8 @@ class ParallelProcessManager():
         # database passed down to WebCrawler class
         self.num_processes = num_processes
         self.url_queue = url_queue
-        self.urls_crawled = 0
-        self.max_urls = 1000
+        self.urls_crawled = mp.Value('i', 0)
+        self.max_urls = MAX_URLS
         self.lock = mp.Lock()
         self.db_lock = mp.Lock()
 
@@ -35,7 +36,11 @@ class ParallelProcessManager():
 
     def run_crawler_process(self, db_name, db_lock):
         # each process creates an instance of the WebCrawler class and crawls urls from the url queue
-        while self.url_queue and self.urls_crawled < self.max_urls:
+        while self.url_queue:
+            with self.lock:
+                if not self.urls_crawled.value < self.max_urls:
+                    break
+
             url = self.url_queue.get()
             print(f"Process {mp.current_process().pid} is crawling {url}")
             db = database.Database(db_name, db_lock) # Instantiate the db with the lock
@@ -44,13 +49,13 @@ class ParallelProcessManager():
             web_crawler.set_database(db)
             results = web_crawler.start_crawling()
             
-            self.lock.acquire()
-            self.urls_crawled += 1
-            self.lock.release()
-            
             if results is None:
                 continue
-            # print(self.urls_crawled)
+
+            self.lock.acquire()
+            self.urls_crawled.value += 1
+            self.lock.release()
+            
             self.add_urls_to_queue(results.url_list)
 
 
