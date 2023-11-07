@@ -1,13 +1,8 @@
 import sqlite3
 
-# Example usage:
-# db = Database("your_database_name.db")
-# db.initialize()
-
 class Database():
     def __init__(self, db_name, db_lock):
         self.db_name = db_name
-        # self.lock = threading.Lock()
         self.lock = db_lock
         self.conn = None
         self.connect()
@@ -53,7 +48,7 @@ class Database():
 
         self.conn.commit()
 
-    def check_url_visited(self, url):
+    def check_url_visited(self, url): # Only use this function for the Crawler class
         with self.lock:
             self.connect()
             with self.conn:
@@ -99,7 +94,7 @@ class Database():
         self.conn.commit()
         return cursor.lastrowid
         
-    def add_server_info_and_url(self, crawl_info): # For Crawler's use
+    def add_server_info_and_url(self, crawl_info): # Only use this function for the Crawler class
         url_crawled = crawl_info.url_crawled
         ip_address = crawl_info.ip_address
         response_time = crawl_info.response_time
@@ -115,23 +110,23 @@ class Database():
             if not self.check_url_visited_without_lock(url_crawled):
                 db_server_id = self.get_or_insert_server_info(ip_address, country, city) # Add server info
                 db_page_id = self.insert_url(url_crawled, response_time, db_server_id)
-                # self.insert_data(db_page_id, html_data) # causes program to hang
+                self.insert_data(db_page_id, html_data)
+            else:
+                print(f"[WARNING] Database encountered duplicate URL {url_crawled}")
             self.close()
         
 
     def mark_page_as_visited(self, page_id):
-        with self.lock:
-            cursor = self.conn.cursor()
+        cursor = self.conn.cursor()
 
-            cursor.execute("UPDATE pages SET visited = TRUE WHERE page_id = ?", (page_id,))
-            self.conn.commit()
+        cursor.execute("UPDATE pages SET visited = TRUE WHERE page_id = ?", (page_id,))
+        self.conn.commit()
 
     def insert_data(self, page_id, data):
-        with self.lock:
-            cursor = self.conn.cursor()
+        cursor = self.conn.cursor()
 
-            cursor.execute("INSERT INTO data (page_id, content) VALUES (?, ?)", (page_id, data))
-            self.conn.commit()
+        cursor.execute("INSERT INTO data (page_id, content) VALUES (?, ?)", (page_id, data))
+        self.conn.commit()
 
 
     def fetch_all_urls(self):

@@ -116,7 +116,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         # Download HTML from URL
         r = requests.get(self.url)
         if r.status_code != 200:
-            print(f"ERROR: Received HTTP Code {r.status_code} from {self.url}")
+            print(f"[ERROR] Received HTTP Code {r.status_code} from {self.url}")
             return None
         
         html = r.text
@@ -130,7 +130,6 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
             
             if Crawler.is_valid_link(href_url):
                 href_url = Crawler.canonicalize_url(href_url)
-                # print(href_url) # TODO: Remove this print!
                 url_list.append(href_url)
         
         # Extract IP address, response time and geolocation
@@ -140,11 +139,12 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         
         results = CrawlInfo(url_crawled=self.url, ip_address=ip_address, 
                             response_time=response_time, geolocation=geolocation, 
-                            html=html, url_list=url_list)
+                            html=html, url_list=url_list) # TODO: Consider only storing the <body> content of the HTML data OR process the data and store relevant data
         self.crawl_info = results
         
         # Add to database
         if results == None:
+            print(f"[WARNING] Crawler could not get HTML data even though 200 OK for {self.url}")
             return results
         
         db.add_server_info_and_url(results)
