@@ -31,7 +31,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
     def set_database(self, ref): # Sets the shared database's name
         self.db_ref = ref
     
-    def is_valid_link(link):
+    def is_valid_link(link): # Check URL link if it is a valid web link
         if link is None:
             return False
         
@@ -41,7 +41,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         if parsed_url.scheme in ['mailto', 'tel', 'javascript']: # TODO: Might change this to check for http or https
             return False
         
-        # Extract relevant details
+        # Extract domain, sub-domain and query details
         if not parsed_url.hostname:
             domain = ''
         else:
@@ -50,11 +50,11 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         subdomain = parsed_url.netloc.split('.')[0]
         query_params = parse_qs(parsed_url.query)
         
-        # Ignore steampowered language links
+        # Ignore Steam website language links
         if domain == 'steampowered.com' and 'l' in query_params:
             return False
         
-        # Ignore Wikipedia Other Languages
+        # Ignore Wikipedia languages links
         wikipedia_lang_set = {'ar', 'bh', 'uk', 'hy', 'tl', 'fr', 'cv', 'inh', 'hr', 'sr', 'de', 'sl', 'pl', 'shn', 'no', 'ml', 'ru', 'pt', 'bn', 'fa', 'te', 'su', 'sq', 'ro', 'sv', 'ceb', 'ps', 'ku', 'nn', 'ne', 'ts', 'lv', 'tr', 'hi', 'sk', 'bg', 'as', 'km', 'mk', 'fy', 'fi', 'ckb', 'zh', 'el', 'et', 'ta', 'it', 'sd', 'sat', 'uz', 'bs', 'yi', 'vi', 'simple', 'azb', 'da', 'ja', 'my', 'hu', 'zh-min-nan', 'kk', 'ka', 'ga', 'si', 'eu', 'ca', 'tt', 'sh', 'ms', 'lt', 'zh-yue', 'cs', 'eo', 'gl', 'th', 'es', 'ast', 'pa', 'nl', 'he', 'ko', 'id'}
         if domain == 'wikipedia.org' and subdomain in wikipedia_lang_set:
             return False
@@ -70,7 +70,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
             return link
         return urljoin(base_url, link)
 
-    def canonicalize_url(url):        
+    def canonicalize_url(url): # Standardizes URLs for better duplicate URL handling  
         # Parse the URL into components
         parsed_url = urlparse(url)
         
@@ -94,19 +94,19 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         return canonicalized_url
 
 
-    def ensure_schema_added(link):
+    def ensure_schema_added(link):  # Checks if link does not have a scheme and adds https by default
         parsed_href = urlparse(link)
-        
-        if parsed_href.scheme == '': # Checks if link does not have a scheme and adds https by default
+
+        if parsed_href.scheme == '':
             new_parsed_href = urlparse(f"https://{parsed_href.geturl()}")
             return new_parsed_href.geturl()
         return parsed_href.geturl()
         
     
-    def start_crawling(self):
+    def start_crawling(self): # Main crawling function
         db = self.db_ref
         
-        if self.crawl_info is not None: # Raise an exception if this URL has already been crawled
+        if self.crawl_info is not None: # Raise an exception if this Crawler object has already been crawled
             raise Exception(f'URL {self.url} has already been crawled')
         
         # Check with db if this url has been crawled
@@ -116,20 +116,20 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         # Download HTML from URL
         r = requests.get(self.url)
         if r.status_code != 200:
+            print(f"[ERROR] Received HTTP Code {r.status_code} from {self.url}")
             return None
         
         html = r.text
-        
+        soup = BeautifulSoup(html, 'html.parser')
+
         # Extract URLs from HTML content
         url_list = []
-        soup = BeautifulSoup(html, 'html.parser')
         for link in soup.find_all('a'):
             href_url = link.get('href')
             href_url = Crawler.ensure_absolute_url(self.url, href_url)
             
             if Crawler.is_valid_link(href_url):
                 href_url = Crawler.canonicalize_url(href_url)
-                # print(href_url) # TODO: Remove this print!
                 url_list.append(href_url)
         
         # Extract IP address, response time and geolocation
@@ -137,19 +137,19 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         response_time = r.elapsed.total_seconds()
         geolocation = Crawler.get_location(ip_address)
         
+        # Compile results into a CrawlInfo object
         results = CrawlInfo(url_crawled=self.url, ip_address=ip_address, 
                             response_time=response_time, geolocation=geolocation, 
-                            html=html, url_list=url_list)
+                            html=html, url_list=url_list) # TODO: Consider only storing the <body> content of the HTML data OR process the data and store relevant data
         self.crawl_info = results
         
-        # Add to database
         if results == None:
+            print(f"[WARNING] Crawler could not get HTML data even though 200 OK for {self.url}")
             return results
-        
-        db.add_server_info_and_url(results)
+
+        db.add_server_info_and_url(results) # Add crawled data into database
         
         return results
-    
     
     def get_ip_address(url):
         domain = url.split("://")[-1].split("/")[0]
