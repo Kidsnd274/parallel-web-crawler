@@ -4,8 +4,7 @@ import sys
 from crawler import *
 
 NUM_PROCESS = 4
-CRAWL_COOL_DOWN = 3
-MAX_URLS = 1000
+MAX_URLS = 10000
 DATABASE_NAME = "crawler.db"
 
 class ParallelProcessManager():
@@ -32,6 +31,12 @@ class ParallelProcessManager():
 
         for process in processes:
             process.join()
+            
+        print(f"FINISHED CRAWLING!!!")
+        print(f"URLs Crawled: {self.urls_crawled}")
+        
+        db = database.Database("test.db", None)
+        print(db.fetch_all_keyword_count())
 
     def run_crawler_process(self, db_name, db_lock):
         # each process creates an instance of the WebCrawler class and crawls urls from the url queue
@@ -44,15 +49,22 @@ class ParallelProcessManager():
             print(f"Process {mp.current_process().pid} is crawling {url}")
             db = database.Database(db_name, db_lock) # Instantiate the db with the lock
             
-            web_crawler = Crawler(url)
-            web_crawler.set_database(db)
-            results = web_crawler.start_crawling()
+            try:
+                web_crawler = Crawler(url)
+                web_crawler.set_database(db)
+                results = web_crawler.start_crawling()
+            except Exception as e:
+                print(f"[WARNING] P {mp.current_process().pid} encounted an error when crawling {url}")
+                print(e)
+                results = None
             
             if results is None:
+                print(f"[WARNING] P {mp.current_process().pid} received None when crawling {url}")
                 continue
 
             with self.urls_crawled.get_lock():
                 self.urls_crawled.value += 1
+                print(f"[INFO] URLs Crawled: {self.urls_crawled.value}")
             
             self.add_urls_to_queue(results.url_list)
 
