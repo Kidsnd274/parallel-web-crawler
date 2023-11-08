@@ -38,11 +38,18 @@ class Database():
             );
         """)
 
+        # cursor.execute("""
+        #     CREATE TABLE IF NOT EXISTS data (
+        #         page_id INTEGER PRIMARY KEY,
+        #         content TEXT,
+        #         FOREIGN KEY (page_id) REFERENCES pages(page_id)
+        #     );
+        # """)
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS data (
-                page_id INTEGER PRIMARY KEY,
-                content TEXT,
-                FOREIGN KEY (page_id) REFERENCES pages(page_id)
+            CREATE TABLE IF NOT EXISTS genre_mentions (
+                keyword TEXT UNIQUE NOT NULL,
+                count INTEGER DEFAULT 0,
+                CHECK (count >= 0)
             );
         """)
 
@@ -63,7 +70,7 @@ class Database():
             if not self.check_url_visited_without_lock(url_crawled): # Check if URL is in database
                 db_server_id = self.get_or_insert_server_info(ip_address, country, city) # Add server info
                 db_page_id = self.insert_url(url_crawled, response_time, db_server_id) # Add page info
-                self.insert_data(db_page_id, html_data) # Add HTML data from the page
+                # self.insert_data(db_page_id, html_data) # Add HTML data from the page
             else:
                 print(f"[WARNING] Database encountered duplicate URL {url_crawled}")
 
@@ -93,26 +100,33 @@ class Database():
             return True
 
     def get_or_insert_server_info(self, ip_address, country, city):
-        cursor = self.conn.cursor()
+        try:
+            cursor = self.conn.cursor()
 
-        cursor.execute("SELECT server_id FROM serverinfo WHERE ip_address = ?", (ip_address,))
-        server_id = cursor.fetchone()
+            cursor.execute("SELECT server_id FROM serverinfo WHERE ip_address = ?", (ip_address,))
+            server_id = cursor.fetchone()
 
-        if server_id is None:
-            cursor.execute("INSERT INTO serverinfo (ip_address, country, city) VALUES (?, ?, ?)",
-                            (ip_address, country, city))
-            self.conn.commit()
-            server_id = cursor.lastrowid
-        else:
-            server_id = server_id[0]
-        return server_id
+            if server_id is None:
+                cursor.execute("INSERT INTO serverinfo (ip_address, country, city) VALUES (?, ?, ?)",
+                                (ip_address, country, city))
+                self.conn.commit()
+                server_id = cursor.lastrowid
+            else:
+                server_id = server_id[0]
+            return server_id
+        except sqlite3.IntegrityError as e:
+            print(f"[ERROR] Error inserting server info '{ip_address}: {e}")
+            return 0
 
     def insert_url(self, url, response_time, server_id):
-        cursor = self.conn.cursor()
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("INSERT INTO pages (url, response_time, server_id) VALUES (?, ?, ?)",
+                            (url, response_time, server_id))
+            self.conn.commit()
+        except sqlite3.IntegrityError as e:
+            print(f"[ERROR] Error inserting URL '{url}: {e}")
 
-        cursor.execute("INSERT INTO pages (url, response_time, server_id) VALUES (?, ?, ?)",
-                        (url, response_time, server_id))
-        self.conn.commit()
         return cursor.lastrowid        
 
     def mark_page_as_visited(self, page_id):
@@ -121,12 +135,37 @@ class Database():
         cursor.execute("UPDATE pages SET visited = TRUE WHERE page_id = ?", (page_id,))
         self.conn.commit()
 
-    def insert_data(self, page_id, data):
+    # def insert_data(self, page_id, data):
+    #     cursor = self.conn.cursor()
+
+    #     cursor.execute("INSERT INTO data (page_id, content) VALUES (?, ?)", (page_id, data))
+    #     self.conn.commit()
+
+    def update_keywords(self, keyword_dict):
         cursor = self.conn.cursor()
-
-        cursor.execute("INSERT INTO data (page_id, content) VALUES (?, ?)", (page_id, data))
-        self.conn.commit()
-
+        for keyword, count in keyword_dict.items():
+            try:
+                if count < 0: # Ensure that count more than 0
+                    print(f"[ERROR] Database received negative count for keyword '{keyword}'")
+                    continue
+                
+                # Check if keyword already exists
+                cursor.execute("SELECT count FROM genre_mentions WHERE keyword = ?", (keyword,))
+                result = cursor.fetchone()
+                
+                if result: # If keyword exists, increment the count
+                    new_count = result[0] + count
+                    if new_count >= 0: # Check if new count is valid
+                        cursor.execute("UPDATE genre_mentions SET count = ? WHERE keyword = ?", (new_count, keyword))
+                    else:
+                        print(f"[ERROR] Database attempted to update count < 0 for keyword '{keyword}' and new count {new_count}")
+                        continue
+                else: # Create new keyword
+                    cursor.execute("INSERT INTO genre_mentions (keyword, count) VALUES (?, ?)", (keyword, count))
+            except sqlite3.IntegrityError as e:
+                print(f"[ERROR] Error updating keyword '{keyword}: {e}")
+        
+        self.conn.commit() # Move this into the for loop if you want to save after every keyword
 
     def fetch_all_urls(self):
         """Retrieve all URLs from the pages table."""
