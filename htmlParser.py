@@ -2,14 +2,14 @@ from collections.abc import Iterable
 from bs4 import BeautifulSoup
 
 sandbox = ['sandbox', 'open-world', 'free-roaming']
-RTS = ['real-time strategy', 'strategy', 'RTS']
-shooters = ['FPS', 'first-person shooter', 'TPS', 'third-person shooter', 'shooters']
-multiplayer_online_battle_arena = ['Multiplayer online battle arena', 'MOBA']
-role_playing = ['RPG', 'role playing', 'role-playing', 'ARPG']
+RTS = ['real-time strategy', 'strategy', 'rts']
+shooters = ['fps', 'first-person shooter', 'tps', 'third-person shooter', 'shooters', 'first-person', 'shooter']
+multiplayer_online_battle_arena = ['multiplayer online battle arena', 'moba']
+role_playing = ['RPG', 'role playing', 'role-playing', 'arpg', 'jrpg']
 simulation_and_sports = ['sport', 'simulation']
 puzzlers_and_party = ['puzzle', 'party', 'minigames']
 survival_and_horror = ['survival', 'horror']
-platformer = ['platformer']
+platformer = ['platformer', 'platformers']
 genres = [sandbox, RTS, shooters, 
           multiplayer_online_battle_arena, role_playing, 
           simulation_and_sports, puzzlers_and_party, survival_and_horror, platformer]
