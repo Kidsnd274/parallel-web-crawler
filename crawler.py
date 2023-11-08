@@ -4,9 +4,10 @@ from urllib.parse import urlencode, urljoin, urlparse, parse_qs, parse_qsl, urlu
 import requests
 import socket
 from bs4 import BeautifulSoup
+from htmlParser import htmlParser
 
 class CrawlInfo:
-    def __init__(self, url_crawled, ip_address, response_time, geolocation, html, url_list):
+    def __init__(self, url_crawled, ip_address, response_time, geolocation, html, url_list, key_dict):
         self.url_crawled = url_crawled
         self.ip_address = ip_address
         self.response_time = response_time
@@ -15,6 +16,7 @@ class CrawlInfo:
         self.geolocation = geolocation
         self.html = html
         self.url_list = url_list
+        self.key_dict = key_dict
         
     def __str__(self):
         return str(self.url_list)
@@ -121,7 +123,10 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         
         html = r.text
         soup = BeautifulSoup(html, 'html.parser')
-
+        
+        # Compile information for html element
+        key_dict = htmlParser.parse(html)
+        
         # Extract URLs from HTML content
         url_list = []
         for link in soup.find_all('a'):
@@ -140,7 +145,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         # Compile results into a CrawlInfo object
         results = CrawlInfo(url_crawled=self.url, ip_address=ip_address, 
                             response_time=response_time, geolocation=geolocation, 
-                            html=html, url_list=url_list) # TODO: Consider only storing the <body> content of the HTML data OR process the data and store relevant data
+                            html=html, url_list=url_list, key_dict= key_dict) # TODO: Consider only storing the <body> content of the HTML data OR process the data and store relevant data
         self.crawl_info = results
         
         if results == None:
