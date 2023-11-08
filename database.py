@@ -199,6 +199,13 @@ class Database():
                 cur = self.conn.cursor()
                 cur.execute("SELECT page_id, content FROM data;")
                 return cur.fetchall()
+            
+    def fetch_all_keyword_count(self):
+        """Retrieve all content data from the data table."""
+        with self.conn:
+            cur = self.conn.cursor()
+            cur.execute("SELECT keyword, count FROM genre_mentions;")
+            return cur.fetchall()
 
     ### PLEASE USE THIS WITH CAUTION, CLEARS EVERYTHING IN DATABASE!!!
     def clear_all(self):
