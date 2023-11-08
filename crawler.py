@@ -1,20 +1,19 @@
-import database
 from ipaddress import ip_address
-from urllib.parse import urlencode, urljoin, urlparse, parse_qs, parse_qsl, urlunparse 
+from urllib.parse import urlencode, urljoin, urlparse, parse_qs, parse_qsl, urlunparse
+import random
 import requests
 import socket
 from bs4 import BeautifulSoup
 from htmlParser import htmlParser
 
 class CrawlInfo:
-    def __init__(self, url_crawled, ip_address, response_time, geolocation, html, url_list, key_dict):
+    def __init__(self, url_crawled, ip_address, response_time, geolocation, url_list, key_dict):
         self.url_crawled = url_crawled
         self.ip_address = ip_address
         self.response_time = response_time
         self.country = geolocation.get("country", "Unknown")
         self.city = geolocation.get("city", "Unknown")
         self.geolocation = geolocation
-        self.html = html
         self.url_list = url_list
         self.key_dict = key_dict
         
@@ -113,10 +112,14 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         
         # Check with db if this url has been crawled
         if db.check_url_visited(self.url):
+            print(f"[INFO] Crawler found duplicate, skipping {self.url}")
             return None
         
         # Download HTML from URL
-        r = requests.get(self.url)
+        try:
+            r = requests.get(self.url, timeout=3)
+        except requests.Timeout:
+            print(f"[ERROR] Crawler request timed out for {self.url}")
         if r.status_code != 200:
             print(f"[ERROR] Received HTTP Code {r.status_code} from {self.url}")
             return None
@@ -145,7 +148,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         # Compile results into a CrawlInfo object
         results = CrawlInfo(url_crawled=self.url, ip_address=ip_address, 
                             response_time=response_time, geolocation=geolocation, 
-                            html=html, url_list=url_list, key_dict= key_dict) # TODO: Consider only storing the <body> content of the HTML data OR process the data and store relevant data
+                            url_list=url_list, key_dict= key_dict) # TODO: Consider only storing the <body> content of the HTML data OR process the data and store relevant data
         self.crawl_info = results
         
         if results == None:

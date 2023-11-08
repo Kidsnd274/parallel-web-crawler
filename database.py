@@ -62,28 +62,37 @@ class Database():
         response_time = crawl_info.response_time
         country = crawl_info.country
         city = crawl_info.city
-        html_data = crawl_info.html
+        # html_data = crawl_info.html
+        key_dict = crawl_info.key_dict
         
+        # print(f"[INFO] Database attempting lock with {url_crawled}")
         with self.lock:
+            # print(f"[INFO] Database GOT lock with {url_crawled}")
+
             self.connect()
 
             if not self.check_url_visited_without_lock(url_crawled): # Check if URL is in database
                 db_server_id = self.get_or_insert_server_info(ip_address, country, city) # Add server info
-                db_page_id = self.insert_url(url_crawled, response_time, db_server_id) # Add page info
-                # self.insert_data(db_page_id, html_data) # Add HTML data from the page
+                self.insert_url(url_crawled, response_time, db_server_id) # Add page info
+                self.update_keywords(key_dict)
             else:
                 print(f"[WARNING] Database encountered duplicate URL {url_crawled}")
 
             self.close()
+            
+        # print(f"[INFO] Database RELEASED lock with {url_crawled}")
 
     def check_url_visited(self, url): # Only use this function for the Crawler class
+        # print(f"[INFO] Database check attempting lock with {url}")
         with self.lock:
+            # print(f"[INFO] Database check GOT lock with {url}")
             self.connect()
             with self.conn:
                 cur = self.conn.cursor()
                 cur.execute("SELECT visited FROM pages WHERE url = ?;", (url,))
                 result = cur.fetchone()
             self.close()
+        # print(f"[INFO] Database check RELEASED lock with {url}")
         if result is None:
             return False
         else:
