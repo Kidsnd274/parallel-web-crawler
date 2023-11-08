@@ -52,7 +52,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         query_params = parse_qs(parsed_url.query)
         
         # Ignore Steam website language links
-        if domain == 'steampowered.com' and 'l' in query_params:
+        if (domain == 'steampowered.com' or domain == 'steamcommunity.com') and 'l' in query_params:
             return False
         
         # Ignore Wikipedia languages links
@@ -120,6 +120,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
             r = requests.get(self.url, timeout=3)
         except requests.Timeout:
             print(f"[ERROR] Crawler request timed out for {self.url}")
+            return None
         if r.status_code != 200:
             print(f"[ERROR] Received HTTP Code {r.status_code} from {self.url}")
             return None

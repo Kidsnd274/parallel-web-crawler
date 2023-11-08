@@ -4,7 +4,7 @@ import sys
 from crawler import *
 
 NUM_PROCESS = 4
-MAX_URLS = 10000
+MAX_URLS = 100
 DATABASE_NAME = "crawler.db"
 
 class ParallelProcessManager():
@@ -33,9 +33,9 @@ class ParallelProcessManager():
             process.join()
             
         print(f"FINISHED CRAWLING!!!")
-        print(f"URLs Crawled: {self.urls_crawled}")
+        print(f"URLs Crawled: {self.urls_crawled.value}")
         
-        db = database.Database("test.db", None)
+        db = database.Database(DATABASE_NAME, None)
         print(db.fetch_all_keyword_count())
 
     def run_crawler_process(self, db_name, db_lock):
