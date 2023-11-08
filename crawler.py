@@ -10,8 +10,8 @@ class CrawlInfo:
         self.url_crawled = url_crawled
         self.ip_address = ip_address
         self.response_time = response_time
-        self.country = geolocation["country"]
-        self.city = geolocation["city"]
+        self.country = geolocation.get("country", "Unknown")
+        self.city = geolocation.get("city", "Unknown")
         self.geolocation = geolocation
         self.html = html
         self.url_list = url_list
