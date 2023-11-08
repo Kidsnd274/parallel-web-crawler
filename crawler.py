@@ -1,4 +1,5 @@
 from ipaddress import ip_address
+import json
 from urllib.parse import urlencode, urljoin, urlparse, parse_qs, parse_qsl, urlunparse
 import random
 import requests
@@ -11,9 +12,10 @@ class CrawlInfo:
         self.url_crawled = url_crawled
         self.ip_address = ip_address
         self.response_time = response_time
-        self.country = geolocation.get("country", "Unknown")
-        self.city = geolocation.get("city", "Unknown")
         self.geolocation = geolocation
+        self.city = geolocation.get('city', 'Unknown')
+        self.country = geolocation.get('country', 'Unknown')
+        
         self.url_list = url_list
         self.key_dict = key_dict
         
@@ -165,7 +167,7 @@ class Crawler: # Takes in one URL and returns a list of URLs in that page
         return socket.gethostbyname(domain)
     
     def get_location(ip_address):
-        response = requests.get(f"https://ipinfo.io/{ip_address}/json")
+        response = requests.get(f"https://ipinfo.io/{ip_address}/json?token=d09ef8e0beef4d")
         data = response.json()
         return data
     
