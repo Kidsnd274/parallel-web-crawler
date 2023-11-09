@@ -5,12 +5,17 @@ python -m venv venv
 .\venv\Scripts\activate.bat
 pip install -r requirements.txt
 ```
-Then run this command to start the script. The script reads from starting_url.txt or any text file with a list of URLs you provide
+Then the following command to start the program:
 ```
 python main.py
 ```
-
-To test crawler with one url, run the following command: (might not work now)
+The script reads from starting_url.txt or any text file with a list of URLs you provide:
 ```
-python crawler.py https://google.com
+python main.py <file containing urls>
+```
+You can set these variables at the top of main.py
+```
+NUM_PROCESS = 4
+MAX_URLS = 100
+DATABASE_NAME = "crawler.db"
 ```
